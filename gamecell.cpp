@@ -24,3 +24,4 @@ void GameCell::setStat(CELL_STATUS newStat)
         }
     }
 }
+

@@ -21,13 +21,6 @@ Game::Game(QWidget *parent)
     createGrid();
 }
 
-void Game::clear()
-{
-    delete gridGame;
-    delete labelPlayer;
-    createGrid();
-}
-
 void Game::createGrid()
 {
     gridGame = new QGridLayout;
@@ -48,21 +41,56 @@ void Game::createPlayerLabel()
     mainLayout->addWidget(labelPlayer);
 }
 
+void Game::clear()
+{
+    delete gridGame;
+    delete labelPlayer;
+    createPlayerLabel();
+    createGrid();
+}
+
+void Game::offAllButtons()
+{
+    for (int i = 0; i < gridGame->count(); i++)
+    {
+        auto *cell = qobject_cast<GameCell *>(gridGame->itemAt(i)->widget());
+        cell->setEnabled(false);
+    }
+}
+
 bool Game::eventFilter(QObject *obj, QEvent *event)
 {
-    auto *button = qobject_cast<GameCell *>(obj);
-    if (event->type() == QEvent::MouseButtonPress && button && button->isEnabled())
+
+    switch (event->type())
     {
-        emit cellPressed(button);
-        return true;
+    case QEvent::MouseButtonPress:
+    {
+        auto *button = qobject_cast<GameCell *>(obj);
+        if (button && button->isEnabled())
+        {
+            emit cellPressed(button);
+            return true;
+        }
     }
-    return false;
+    default:
+    {
+        if (isFinishGame)
+        {
+            isFinishGame = false;
+            offAllButtons();
+            return true;
+        }
+
+        return false;
+    }
+    }
 }
 
 void Game::clickGameCell(GameCell *cell)
 {
     cell->setEnabled(false);
     cell->setStat(mainPlayer);
+    stepCount++;
     finishMove();
 }
 
@@ -73,7 +101,6 @@ void Game::createGridButton()
     {
         for (int columIndex = 0; columIndex < 3; columIndex++, index++)
         {
-            gameField[index] = None;
             QPushButton *tmpButton = new GameCell;
             tmpButton->setFont(font);
             tmpButton->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
@@ -132,7 +159,7 @@ bool Game::checkVertical(CELL_STATUS &winer)
 void Game::finishMove()
 {
     CELL_STATUS winer = None;
-    if (stepCount >= MAX_SYMBOL_FOR_WIN || checkDig(winer) || checkHorizontal(winer) || checkVertical(winer))
+    if (stepCount > MAX_SYMBOL_FOR_WIN && (checkDig(winer) || checkHorizontal(winer) || checkVertical(winer)))
     {
         isFinishGame = true;
         if (winer == X )
@@ -144,9 +171,8 @@ void Game::finishMove()
             labelPlayer->setText("Игрок O победил");
         }
     }
-    else if (stepCount >= MAX_CELL)
+    else if (stepCount == MAX_CELL)
     {
-        isFinishGame = true;
         labelPlayer->setText("Ничья");
     }
     else
