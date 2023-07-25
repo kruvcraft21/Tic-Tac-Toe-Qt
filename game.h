@@ -6,14 +6,9 @@
 #include <QGridLayout>
 #include <QVBoxLayout>
 #include <QLabel>
+#include <QEvent>
 #include <array>
-
-enum CELL_STATUS : uint
-{
-    None = 0,
-    X,
-    O,
-};
+#include "gamecell.h"
 
 constexpr unsigned int MAX_CELL = 9;
 constexpr unsigned int MAX_SYMBOL_FOR_WIN = 3;
@@ -33,7 +28,15 @@ private:
     uint stepCount;
     bool isFinishGame;
 
+private slots:
+    void clear();
+    void clickGameCell(GameCell *obj);
+
+signals:
+    void cellPressed(GameCell *obj);
+
 private:
+    bool eventFilter(QObject *obj, QEvent *event) override;
     void createGrid();
     void createPlayerLabel();
     void createGridButton();

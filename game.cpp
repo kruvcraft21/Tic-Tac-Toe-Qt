@@ -1,7 +1,7 @@
 #include "game.h"
 
 Game::Game(QWidget *parent)
-    : QWidget(parent)
+    : QWidget(parent, Qt::WindowCloseButtonHint)
 {
     resize(300, 300);
     setWindowTitle("Tic Tac Toe");
@@ -11,23 +11,27 @@ Game::Game(QWidget *parent)
 
     mainLayout = new QVBoxLayout;
     setLayout(mainLayout);
+
     QPushButton *tmp = new QPushButton("Начать новую игру");
     tmp->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Ignored);
     mainLayout->addWidget(tmp);
-    connect(tmp, &QPushButton::clicked, this, [this](){
-        delete gridGame;
-        delete labelPlayer;
-        createGrid();
-    });
-    createGrid();
+    connect(tmp, &QPushButton::clicked, this, &Game::clear, Qt::UniqueConnection);
 
+    createPlayerLabel();
+    createGrid();
+}
+
+void Game::clear()
+{
+    delete gridGame;
+    delete labelPlayer;
+    createGrid();
 }
 
 void Game::createGrid()
 {
     gridGame = new QGridLayout;
     mainLayout->addLayout(gridGame);
-    createPlayerLabel();
     createGridButton();
 }
 
@@ -40,56 +44,60 @@ void Game::createPlayerLabel()
     QFont font {"Arial Black", 20};
     labelPlayer->setFont(font);
     labelPlayer->setAlignment(Qt::AlignCenter);
-
     labelPlayer->setPalette(paletteX);
-    gridGame->addWidget(labelPlayer, 0, 0, 1, 3);
+    mainLayout->addWidget(labelPlayer);
+}
+
+bool Game::eventFilter(QObject *obj, QEvent *event)
+{
+    auto *button = qobject_cast<GameCell *>(obj);
+    if (event->type() == QEvent::MouseButtonPress && button && button->isEnabled())
+    {
+        emit cellPressed(button);
+        return true;
+    }
+    return false;
+}
+
+void Game::clickGameCell(GameCell *cell)
+{
+    cell->setEnabled(false);
+    cell->setStat(mainPlayer);
+    finishMove();
 }
 
 void Game::createGridButton()
 {
     QFont font {"Arial Black", 20};
-    for (int rowIndex = 1, index = 0; rowIndex < 4; rowIndex++)
+    for (int rowIndex = 0, index = 0; rowIndex < 3; rowIndex++)
     {
         for (int columIndex = 0; columIndex < 3; columIndex++, index++)
         {
             gameField[index] = None;
-            QPushButton *tmpButton = new QPushButton(" ");
+            QPushButton *tmpButton = new GameCell;
             tmpButton->setFont(font);
             tmpButton->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
             gridGame->addWidget(tmpButton, rowIndex, columIndex);
-            connect(tmpButton, &QPushButton::clicked, [&, tmpButton, &cell = gameField[index]](){
-                if (!isFinishGame)
-                {
-                    switch (this->mainPlayer) {
-                        case X:
-                            tmpButton->setText("X");
-                            cell = X;
-                            break;
-                        case O:
-                            tmpButton->setText("O");
-                            cell = O;
-                            break;
-                    default:
-                        break;
-                    }
-                    stepCount++;
-                    tmpButton->setDisabled(true);
-                    this->finishMove();
-                }
-            });
+            tmpButton->installEventFilter(this);
         }
     }
+    connect(this, &Game::cellPressed, this, &Game::clickGameCell, Qt::UniqueConnection);
 }
 
 CELL_STATUS Game::checkThree(int startPos, int max)
 {
     uint sum = 0;
     uint stepSize = (max - startPos) / (MAX_SYMBOL_FOR_WIN - 1);
-    for (int i = startPos; i < max; i += stepSize)
+    auto *startCell = qobject_cast<GameCell *>(gridGame->itemAt(startPos)->widget());
+    if (startCell)
     {
-        if (gameField[i] == gameField[startPos]) sum++;
+        for (int i = startPos; i < max; i += stepSize)
+        {
+            auto *cell = qobject_cast<GameCell *>(gridGame->itemAt(i)->widget());
+            if (cell && cell->stat() == startCell->stat()) sum++;
+        }
     }
-    return sum == MAX_SYMBOL_FOR_WIN ? gameField[startPos] : None;
+    return sum == MAX_SYMBOL_FOR_WIN ? startCell->stat() : None;
 }
 
 bool Game::checkDig(CELL_STATUS &winer)
@@ -124,7 +132,7 @@ bool Game::checkVertical(CELL_STATUS &winer)
 void Game::finishMove()
 {
     CELL_STATUS winer = None;
-    if (checkDig(winer) || checkHorizontal(winer) || checkVertical(winer))
+    if (stepCount >= MAX_SYMBOL_FOR_WIN || checkDig(winer) || checkHorizontal(winer) || checkVertical(winer))
     {
         isFinishGame = true;
         if (winer == X )
