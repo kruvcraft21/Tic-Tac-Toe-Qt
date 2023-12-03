@@ -58,6 +58,17 @@ void Game::offAllButtons()
     }
 }
 
+bool Game::gameIsFinish()
+{
+    if (isFinishGame)
+    {
+        isFinishGame = false;
+        offAllButtons();
+        return true;
+    }
+    return false;
+}
+
 bool Game::eventFilter(QObject *obj, QEvent *event)
 {
 
@@ -71,18 +82,10 @@ bool Game::eventFilter(QObject *obj, QEvent *event)
             emit cellPressed(button);
             return true;
         }
+        return gameIsFinish();
     }
     default:
-    {
-        if (isFinishGame)
-        {
-            isFinishGame = false;
-            offAllButtons();
-            return true;
-        }
-
-        return false;
-    }
+        return gameIsFinish();
     }
 }
 

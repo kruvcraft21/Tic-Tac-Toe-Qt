@@ -49,6 +49,7 @@ private:
     bool checkVertical(CELL_STATUS &winer);
 
     void offAllButtons();
+    bool gameIsFinish();
 
 public:
     Game(QWidget *parent = nullptr);
